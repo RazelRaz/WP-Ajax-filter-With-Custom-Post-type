@@ -41,35 +41,43 @@ class Rz_Ajax_Filter_And_Custom_Post_Type {
   }
 
   public function filter_posts() {
+
+
+    // Verify nonce
+    if ( ! isset($_POST['nonce']) || ! wp_verify_nonce($_POST['nonce'], 'filter_posts_nonce') ) {
+      wp_send_json_error('Invalid nonce');
+      wp_die();
+    }
+
     $args = [
       'post_type' => 'film',
       'posts_per_page' => -1,
     ];
 
-    // Category filtering
-    $type = $_REQUEST['cat'];
-    if ( !empty($type) ) {
-      $args['tax_query'] = [
-        [
-          'taxonomy' => 'movie_type',
-          'field'    => 'slug',
-          'terms'    => $type,
-        ]
-      ];
-    }
+      // Category filtering
+      $type = isset($_POST['cat']) ? sanitize_text_field($_POST['cat']) : '';
+      if (!empty($type)) {
+          $args['tax_query'] = [
+              [
+                  'taxonomy' => 'movie_type',
+                  'field'    => 'slug',
+                  'terms'    => $type,
+              ]
+          ];
+      }
 
 
-    // Ratings filtering (using ACF or meta field for storing ratings)
-    $rating = $_REQUEST['rating'];
-    if ( !empty($rating) ) {
-      $args['meta_query'] = [
-        [
-          'key'     => 'movie_option',
-          'value'   => $rating,
-          'compare' => '=',
-        ]
-      ];
-    }
+     // Ratings filtering (using ACF or meta field for storing ratings)
+     $rating = isset($_POST['rating']) ? sanitize_text_field($_POST['rating']) : '';
+     if (!empty($rating)) {
+         $args['meta_query'] = [
+             [
+                 'key'     => 'movie_option',
+                 'value'   => $rating,
+                 'compare' => '=',
+             ]
+         ];
+     }
 
     $movies = new WP_Query($args);
     
@@ -133,8 +141,12 @@ class Rz_Ajax_Filter_And_Custom_Post_Type {
     // Add jQuery script to show/hide film details
     wp_enqueue_script('film-ajax-script', $plugin_url . 'assets/js/scripts.js', array('jquery'), '1.0.0', true);
 
+    // Generate a nonce for security
+    $nonce = wp_create_nonce('filter_posts_nonce');
+    
     wp_localize_script( 'film-ajax-script', 'variables', [
       'ajax_url' => admin_url( 'admin-ajax.php' ),
+      'nonce'    => $nonce,
     ] );
 
   }

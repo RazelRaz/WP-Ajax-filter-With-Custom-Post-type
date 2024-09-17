@@ -8,6 +8,7 @@ jQuery( function($) {
       action: 'filter_posts',
       cat: cat,
       rating: rating,
+      nonce: variables.nonce  // Include nonce
     }
     $.ajax({
       url: variables.ajax_url,
