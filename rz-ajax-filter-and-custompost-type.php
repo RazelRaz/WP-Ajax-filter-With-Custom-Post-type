@@ -21,6 +21,8 @@ class Rz_Ajax_Filter_And_Custom_Post_Type {
 
     // enqueue scripts
     add_action('wp_enqueue_scripts', array($this, 'enqueue_frontend_styles'));
+    add_action( 'wp_ajax_filter_posts', array($this, 'filter_posts') );
+    add_action( 'wp_ajax_nopriv_filter_posts', array( $this, 'filter_posts' ) );
 
     register_post_type( 'Film', [
       'label' => 'film',
@@ -37,6 +39,90 @@ class Rz_Ajax_Filter_And_Custom_Post_Type {
     ]);
 
   }
+
+  public function filter_posts() {
+    $args = [
+      'post_type' => 'film',
+      'posts_per_page' => -1,
+    ];
+
+    // Category filtering
+    $type = $_REQUEST['cat'];
+    if ( !empty($type) ) {
+      $args['tax_query'] = [
+        [
+          'taxonomy' => 'movie_type',
+          'field'    => 'slug',
+          'terms'    => $type,
+        ]
+      ];
+    }
+
+
+    // Ratings filtering (using ACF or meta field for storing ratings)
+    $rating = $_REQUEST['rating'];
+    if ( !empty($rating) ) {
+      $args['meta_query'] = [
+        [
+          'key'     => 'movie_option',
+          'value'   => $rating,
+          'compare' => '=',
+        ]
+      ];
+    }
+
+    $movies = new WP_Query($args);
+    
+    if ($movies->have_posts()) {
+      ob_start();
+      while ($movies->have_posts()) {
+        $movies->the_post();
+        ?>
+        <div class="film-item">
+          <h2><a href="<?php echo get_the_permalink(); ?>"><?php the_title(); ?></a></h2>
+          <?php if ( has_post_thumbnail() ) : ?>
+            <a href="<?php echo get_the_permalink(); ?>"><?php the_post_thumbnail(); ?></a>
+          <?php endif; ?>
+          <div class="film-excerpt"><?php the_excerpt(); ?></div>
+          <!-- Display Categories -->
+          <?php 
+          $categories = get_the_terms( get_the_ID(), 'movie_type' );
+          if ( $categories && ! is_wp_error( $categories ) ) :
+          ?>
+            <div class="film-categories">
+              <p>Categories: 
+              <?php 
+                $cat_list = [];
+                foreach ( $categories as $category ) {
+                  $cat_list[] = $category->name;
+                }
+                echo implode( ', ', $cat_list );
+              ?>
+              </p>
+            </div>
+          <?php endif; ?>
+          <div class="film-rating rat-div">
+            <p>
+              <?php 
+              $rating = get_field('movie_option'); // Assuming ACF is used for the rating
+              echo $rating ? 'Rating: ' . esc_html($rating) : 'Rating: Not available';
+              ?>
+            </p>
+            
+          </div>
+        </div>
+        <?php
+      }
+      wp_reset_postdata();
+      echo ob_get_clean();
+    } else {
+      echo '<p>No films found</p>';
+    }
+
+    wp_die();
+  }
+
+
 
   // enqueue frontend css
   public function enqueue_frontend_styles() { 
@@ -88,10 +174,10 @@ class Rz_Ajax_Filter_And_Custom_Post_Type {
         <h2>Filters</h2>
         <?php 
           $terms = get_terms(['taxonomy' => 'movie_type']); 
-          dump($terms);
+          // dump($terms);
           if ( $terms ) : ?> 
           <select name="cat" id="cat">
-            <option value="">Select</option>
+            <option value="">Select ALL</option>
             <?php foreach ( $terms as $term ) : ?>
               <option value="<?php echo $term->slug ?>"> <?php echo $term->name; ?> </option>
             <?php endforeach; ?>
