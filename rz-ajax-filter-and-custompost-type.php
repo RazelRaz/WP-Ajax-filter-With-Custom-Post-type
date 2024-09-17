@@ -167,80 +167,83 @@ class Rz_Ajax_Filter_And_Custom_Post_Type {
       'posts_per_page' => -1,
     ] );
 
-    if ( $query->have_posts() ) {
-      $output = '<div class="films-list">';
-      ?>
-      <div class="js-filter">
-        <h2>Filters</h2>
-        <?php 
-          $terms = get_terms(['taxonomy' => 'movie_type']); 
-          // dump($terms);
-          if ( $terms ) : ?> 
-          <select name="cat" id="cat">
-            <option value="">Select ALL</option>
-            <?php foreach ( $terms as $term ) : ?>
-              <option value="<?php echo $term->slug ?>"> <?php echo $term->name; ?> </option>
-            <?php endforeach; ?>
-          </select>
-          <?php endif; ?>
-        
-          <select name="popularity" id="popularity">
-            <option value="">Select Popularity</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-          </select>
-      </div>
-      <?php
- 
-      while ( $query->have_posts() ) {
-          $query->the_post();
-          // Get the ACF field for Ratings
-          $rating = get_field('movie_option');
-          // dump($rating);
-          // Get the ACF field for Ratings
-          $rating = get_field('movie_option'); // Adjust 'ratings' or 'movie_option' based on your field structure
-          // Categories
-          $categories = get_the_terms( get_the_ID(), 'movie_type' );
-          
+    $output = '<div class="films-container">'; // Added container for filter and films list
 
-          $output .= '<div class="film-item">';
-            $output .= '<h2><a href="' . get_the_permalink() . '">' . get_the_title() . get_field('') .'</a></h2>';
+    // Filters section
+    $output .= '<div class="js-filter">';
+    $output .= '<h2>Filters</h2>';
+    
+    $terms = get_terms(['taxonomy' => 'movie_type']); 
+    if ( $terms ) :
+        $output .= '<select name="cat" id="cat">';
+        $output .= '<option value="">Select ALL</option>';
+        foreach ( $terms as $term ) :
+            $output .= '<option value="' . esc_attr($term->slug) . '">' . esc_html($term->name) . '</option>';
+        endforeach;
+        $output .= '</select>';
+    endif;
+
+    $output .= '<select name="popularity" id="popularity">';
+    $output .= '<option value="">Select Popularity</option>';
+    $output .= '<option value="1">1</option>';
+    $output .= '<option value="2">2</option>';
+    $output .= '<option value="3">3</option>';
+    $output .= '<option value="4">4</option>';
+    $output .= '<option value="5">5</option>';
+    $output .= '</select>';
+    
+    $output .= '</div>'; // Close filter section
+
+    // Films list section
+    $output .= '<div class="films-list">';
+
+    if ( $query->have_posts() ) {
+        while ( $query->have_posts() ) {
+            $query->the_post();
+            // Get the ACF field for Ratings
+            $rating = get_field('movie_option'); // Adjust 'movie_option' based on your field structure
+            
+            // Categories
+            $categories = get_the_terms( get_the_ID(), 'movie_type' );
+            
+            $output .= '<div class="film-item">';
+            $output .= '<h2><a href="' . esc_url(get_the_permalink()) . '">' . get_the_title() . '</a></h2>';
             if ( has_post_thumbnail() ) {
-              $output .= '<a href="' . get_the_permalink() . '">' . get_the_post_thumbnail() . '</a>';
+                $output .= '<a href="' . esc_url(get_the_permalink()) . '">' . get_the_post_thumbnail() . '</a>';
             }
             $output .= '<div class="film-excerpt">' . get_the_excerpt() . '</div>';
 
             // Display Categories
             if ( $categories && ! is_wp_error( $categories ) ) {
-              $output .= '<div class="film-categories"><p>Categories: ';
-              $cat_list = [];
-              foreach ( $categories as $category ) {
-                  $cat_list[] = $category->name;
-              }
-              $output .= implode( ', ', $cat_list );
-              $output .= '</p></div>';
+                $output .= '<div class="film-categories"><p>Categories: ';
+                $cat_list = [];
+                foreach ( $categories as $category ) {
+                    $cat_list[] = esc_html($category->name);
+                }
+                $output .= implode( ', ', $cat_list );
+                $output .= '</p></div>';
             }
 
             // Display Ratings field
             if ( $rating ) {
-              $output .= '<div class="rat-div"><p>Rating: ' . esc_html($rating) . '</p> </div>';
-           } else {
-              $output .= '<p>Rating: No Rating Available For This Movie!! </p>';
-           }
+                $output .= '<div class="rat-div"><p>Rating: ' . esc_html($rating) . '</p></div>';
+            } else {
+                $output .= '<p>Rating: No Rating Available For This Movie!!</p>';
+            }
             
-          $output .= '</div>';
-          wp_reset_postdata();
-      }
-      $output .= '</div>';
+            $output .= '</div>'; // Close film-item
+        }
+        wp_reset_postdata();
     } else {
-      $output = '<p>No films found</p>';
+        $output .= '<p>No films found</p>';
     }
+
+    $output .= '</div>'; // Close films-list
+    $output .= '</div>'; // Close films-container
 
     return $output;
   }
+
 
 
 
